@@ -1,0 +1,1 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/96fi4flntfo29ksk?svg=true)](https://ci.appveyor.com/project/anastasia-shmeleva/ahj-hw6-dnd)
