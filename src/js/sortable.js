@@ -1,6 +1,7 @@
-/* eslint-disable max-len */
 /* eslint-disable class-methods-use-this */
 /* eslint-disable no-param-reassign */
+import Item from './Item';
+
 export default class Sortable {
   constructor(element) {
     if (typeof element === 'string') {
@@ -11,6 +12,11 @@ export default class Sortable {
     this.sortableItems = [...this.element.querySelectorAll('.draggable')];
     this.activeDragElement = undefined;
     this.ghostEl = null;
+    this.state = {
+      column1: [],
+      column2: [],
+      column3: [],
+    };
 
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -22,31 +28,55 @@ export default class Sortable {
   }
 
   render() {
+    this.state = JSON.parse(localStorage.getItem('state'));
+    const columns = Array.from(this.element.querySelectorAll('.items'));
+
     if (localStorage.length > 0) {
-      Object.entries(localStorage).forEach((item) => {
-        // what to insert
-        const column = item[0];
-        const text = item[1];
-        // where to insert
-        const columns = Array.from(this.element.querySelectorAll('.items'));
-        const columnTo = columns.find((col) => columns.indexOf(col) === Number(column));
-        // insert
-        const el = document.createElement('div');
-        el.className = 'items-item draggable';
-        el.draggable = 'true';
+      Object.entries(this.state).forEach((entrie) => {
+        switch (entrie[0]) {
+          case 'column1':
+            entrie[1].forEach((item) => {
+              const column = columns.find((col) => columns.indexOf(col) === 0);
+              this.insertElement(item.value, column);
+            });
+            break;
 
-        const txtEl = document.createElement('span');
-        txtEl.innerText = text;
+          case 'column2':
+            entrie[1].forEach((item) => {
+              const column = columns.find((col) => columns.indexOf(col) === 1);
+              this.insertElement(item.value, column);
+            });
+            break;
 
-        const btn = document.createElement('div');
-        btn.className = 'delete';
-        btn.innerHTML = '&#x2715;';
+          case 'column3':
+            entrie[1].forEach((item) => {
+              const column = columns.find((col) => columns.indexOf(col) === 2);
+              this.insertElement(item.value, column);
+            });
+            break;
 
-        el.appendChild(txtEl);
-        el.appendChild(btn);
-        columnTo.insertBefore(el, columnTo.querySelector('.btn-add'));
+          default:
+            break;
+        }
       });
     }
+  }
+
+  insertElement(value, column) {
+    const el = document.createElement('div');
+    el.className = 'items-item draggable';
+    el.draggable = 'true';
+
+    const txtEl = document.createElement('span');
+    txtEl.innerText = value;
+
+    const btn = document.createElement('div');
+    btn.className = 'delete';
+    btn.innerHTML = '&#x2715;';
+
+    el.appendChild(txtEl);
+    el.appendChild(btn);
+    column.insertBefore(el, column.querySelector('.btn-add'));
   }
 
   onMouseDown(e) {
@@ -72,10 +102,6 @@ export default class Sortable {
 
     this.activeDragElement = target;
 
-    // запомнить координаты клика
-    this.activeDragElement.downX = e.pageX;
-    this.activeDragElement.downY = e.pageY;
-
     // копия для переноса
     this.ghostEl = this.activeDragElement.cloneNode(true);
     this.ghostEl.classList.add('dragged');
@@ -90,10 +116,8 @@ export default class Sortable {
 
   onMouseMove(e) {
     e.preventDefault();
+    if (!this.activeDragElement) return;
 
-    if (!this.activeDragElement) {
-      return;
-    }
     this.ghostEl.style.left = `${e.clientX + window.scrollX}px`;
     this.ghostEl.style.top = `${e.clientY + window.scrollY}px`;
   }
@@ -116,9 +140,30 @@ export default class Sortable {
 
   toDelete(e) {
     const elToDelete = e.target.closest('.items-item');
+
+    // удаление из local storage
+    const indexOfColumn = Array.from(this.element.querySelectorAll('.items')).findIndex((col) => col === e.target.closest('.items'));
+    switch (indexOfColumn) {
+      case 0:
+        this.state.column1.splice(this.state.column1.findIndex((item) => elToDelete.querySelector('span').innerText === item.value), 1);
+        break;
+
+      case 1:
+        this.state.column2.splice(this.state.column2.findIndex((item) => elToDelete.querySelector('span').innerText === item.value), 1);
+        break;
+
+      case 2:
+        this.state.column3.splice(this.state.column3.findIndex((item) => elToDelete.querySelector('span').innerText === item.value), 1);
+        break;
+
+      default:
+        break;
+    }
+
+    localStorage.setItem('state', JSON.stringify(this.state));
+
+    // удаление из DOM
     elToDelete.remove();
-    // не удаляет из local storage
-    localStorage.removeItem(Object.values(localStorage).find((value) => value === elToDelete.querySelector('span').innerText));
   }
 
   newCardForm(e) {
@@ -144,12 +189,33 @@ export default class Sortable {
       el.appendChild(btn);
 
       column.querySelector('.add-card').style.display = 'none';
+      e.target.form[0].value = '';
       column.querySelector('.btn-add').style.display = 'block';
       column.insertBefore(el, column.querySelector('.btn-add'));
 
-      // заменяет значения, что лучше использовать как ключ?
+      // сохранение в localStorage
+      const item = new Item(text);
+
       const indexOfColumn = Array.from(this.element.querySelectorAll('.items')).findIndex((col) => col === e.target.closest('.items'));
-      localStorage.setItem(indexOfColumn, text);
+
+      switch (indexOfColumn) {
+        case 0:
+          this.state.column1.push(item);
+          break;
+
+        case 1:
+          this.state.column2.push(item);
+          break;
+
+        case 2:
+          this.state.column3.push(item);
+          break;
+
+        default:
+          break;
+      }
+
+      localStorage.setItem('state', JSON.stringify(this.state));
     }
 
     // cancel adding
